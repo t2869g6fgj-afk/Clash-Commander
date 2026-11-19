@@ -94,7 +94,7 @@ class ClashCompanionAccessibilityService : AccessibilityService() {
                 // Card slot tapped, now tap the zone after a short delay
                 handler.postDelayed({
                     safeTap(zoneX, zoneY)
-                }, 80)
+                }, 180)
             }
 
             override fun onCancelled(gestureDescription: GestureDescription?) {
