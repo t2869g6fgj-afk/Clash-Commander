@@ -104,27 +104,19 @@ extract_android_jni() {
   local tarball="$1"
   local dest="$2"
 
-  local required_a=(
-    "jniLibs/arm64-v8a/libonnxruntime.so"
-    "jniLibs/arm64-v8a/libsherpa-onnx-jni.so"
-    "jniLibs/arm64-v8a/libsherpa-onnx-c-api.so"
-    "jniLibs/arm64-v8a/libsherpa-onnx-cxx-api.so"
-  )
-  local required_b=(
-    "sherpa-onnx-v1.12.23-android/jniLibs/arm64-v8a/libonnxruntime.so"
-    "sherpa-onnx-v1.12.23-android/jniLibs/arm64-v8a/libsherpa-onnx-jni.so"
-    "sherpa-onnx-v1.12.23-android/jniLibs/arm64-v8a/libsherpa-onnx-c-api.so"
-    "sherpa-onnx-v1.12.23-android/jniLibs/arm64-v8a/libsherpa-onnx-cxx-api.so"
+  local libs=(
+    "libonnxruntime.so"
+    "libsherpa-onnx-jni.so"
+    "libsherpa-onnx-c-api.so"
+    "libsherpa-onnx-cxx-api.so"
   )
 
   local missing=0
-  for rel in "${required_a[@]}"; do
-    local out_path="$dest/$(basename "$rel")"
-    if [[ -s "$out_path" ]]; then
-      continue
+  for lib in "${libs[@]}"; do
+    if [[ ! -s "$dest/$lib" ]]; then
+      missing=1
+      break
     fi
-    missing=1
-    break
   done
 
   if [[ "$missing" -eq 0 ]]; then
@@ -133,18 +125,18 @@ extract_android_jni() {
   fi
 
   echo "EXTR: android jni libs"
-  local extracted=()
-  if tar -xjf "$tarball" -C "$TMP_DIR" "${required_a[@]}"; then
-    extracted=("${required_a[@]}")
-  elif tar -xjf "$tarball" -C "$TMP_DIR" "${required_b[@]}"; then
-    extracted=("${required_b[@]}")
-  else
-    echo "ERROR: Failed to extract Android JNI libs from archive" >&2
-    exit 1
-  fi
+  # Release archives may store entries as ./jniLibs/... or under a
+  # versioned directory. Extract first, then locate the ARM64 files.
+  tar -xjf "$tarball" -C "$TMP_DIR"
 
-  for rel in "${extracted[@]}"; do
-    cp -f "$TMP_DIR/$rel" "$dest/$(basename "$rel")"
+  for lib in "${libs[@]}"; do
+    local source
+    source="$(find "$TMP_DIR" -type f -path "*/jniLibs/arm64-v8a/$lib" -print -quit)"
+    if [[ -z "$source" ]]; then
+      echo "ERROR: Could not find $lib for arm64-v8a in Android archive" >&2
+      exit 1
+    fi
+    cp -f "$source" "$dest/$lib"
   done
 }
 
